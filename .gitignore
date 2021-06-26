@@ -1,6 +1,8 @@
 /node_modules/
 /build/
 .idea/
+scripts/
+hardhat.config.js
 
 node_modules
 
