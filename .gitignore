@@ -3,6 +3,7 @@
 .idea/
 scripts/
 hardhat.config.js
+*.lock
 
 node_modules
 
