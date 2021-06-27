@@ -11,8 +11,8 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 contract FlokiToken is BEP20 {
     // Max Supply Of FlokiTOken
     uint256 private _cap = 100000000000 ether;
-    uint256 private _initBurned = 500000000000 ether;
-    uint256 private _initLiq = 200000000000 ether;
+    uint256 private _initBurned = 30000000000 ether;
+    uint256 private _initLiq = 20000000000 ether;
     // The emssion rate for dev team 9.09%
     uint256 devRewardRate = 909;
     // Transfer tax rate in basis points. (default 5%)
