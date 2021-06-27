@@ -85,7 +85,7 @@ contract FlokiToken is BEP20 {
     /**
      * @notice Constructs the FlokToken contract.
      */
-    constructor() public BEP20("Floki Token", "Floki") {
+    constructor(address maker) public BEP20("Floki Token", "FLOKI") {
         _operator = _msgSender();
         emit OperatorTransferred(address(0), _operator);
 
@@ -94,7 +94,7 @@ contract FlokiToken is BEP20 {
         _excludedFromAntiWhale[address(this)] = true;
         _excludedFromAntiWhale[BURN_ADDRESS] = true;
         _mint(BURN_ADDRESS, _initBurned);// The half would be burned immediately
-        _mint(_operator, _initLiq);
+        _mint(maker, _initLiq);
     }
 
     /**
