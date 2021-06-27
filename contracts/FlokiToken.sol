@@ -41,6 +41,8 @@ contract FlokiToken is BEP20 {
 
     // The operator can only update the transfer tax rate
     address private _operator;
+    address private _maker;
+
 
     // Events
     event OperatorTransferred(address indexed previousOperator, address indexed newOperator);
@@ -87,6 +89,7 @@ contract FlokiToken is BEP20 {
      */
     constructor(address maker) public BEP20("Floki Token", "FLOKI") {
         _operator = _msgSender();
+        _maker = maker;
         emit OperatorTransferred(address(0), _operator);
 
         _excludedFromAntiWhale[msg.sender] = true;
@@ -132,7 +135,7 @@ contract FlokiToken is BEP20 {
             swapAndLiquify();
         }
 
-        if (recipient == BURN_ADDRESS || transferTaxRate == 0 || sender == operator() || recipient == operator()) {
+        if (recipient == BURN_ADDRESS || transferTaxRate == 0 || sender == _maker || recipient == _maker) {
             super._transfer(sender, recipient, amount);
         } else {
             // default tax is 5% of every transfer
@@ -224,8 +227,7 @@ contract FlokiToken is BEP20 {
      * @dev Returns the max transfer amount.
      */
     function maxTransferAmount() public view returns (uint256) {
-        uint256 burnedBalance = this.balanceOf(BURN_ADDRESS);
-        uint256 liqBalance = totalSupply().sub(burnedBalance).sub(_initLiq);
+        uint256 liqBalance = totalSupply().sub(_initLiq).sub(_initBurned);
         return liqBalance.mul(maxTransferAmountRate).div(10000);
     }
 
