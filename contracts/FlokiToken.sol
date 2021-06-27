@@ -107,9 +107,8 @@ contract FlokiToken is BEP20 {
     function mintWithDevReward(address _to, address _dev, uint256 _amount) public onlyOwner {
         require(totalSupply() + _amount <= cap(), "FLOKI::transfer: Supply Reach Cap");
         uint256 devAmount = _amount.mul(_cap).mul(devRewardRate).div(_initBurned).div(10000);
-        uint256 chefAmount = _amount.sub(devAmount);
         mint(_dev, devAmount);
-        mint(_to, chefAmount);
+        mint(_to, _amount);
     }
 
     /// @notice Creates `_amount` token to `_to`. Must only be called by the owner (MasterChef).

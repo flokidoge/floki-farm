@@ -7,7 +7,6 @@ import "./libs/SafeBEP20.sol";
 import "./libs/IFlokiReferral.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-
 import "./FlokiToken.sol";
 
 // Note that it's ownable and the owner wields tremendous power. The ownership
@@ -182,6 +181,8 @@ contract MasterChef is Ownable, ReentrancyGuard {
         }
         uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
         uint256 flokiReward = multiplier.mul(flokiPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
+        // floki.mint(devAddress, flokiReward.div(10));
+        // floki.mint(address(this), flokiReward);
         floki.mintWithDevReward(address(this), devAddress, flokiReward);
         pool.accFlokiPerShare = pool.accFlokiPerShare.add(flokiReward.mul(1e12).div(lpSupply));
         pool.lastRewardBlock = block.number;
