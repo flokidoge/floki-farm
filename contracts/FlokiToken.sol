@@ -10,7 +10,7 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 //Floki Token with Governance.
 contract FlokiToken is BEP20 {
     // Max Supply Of FlokiTOken
-    uint256 private _cap = 1000000000000 ether;
+    uint256 private _cap = 100000000000 ether;
     uint256 private _initBurned = 500000000000 ether;
     uint256 private _initLiq = 200000000000 ether;
     // The emssion rate for dev team 9.09%
