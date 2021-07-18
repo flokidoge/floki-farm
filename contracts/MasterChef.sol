@@ -8,6 +8,7 @@ import "./libs/IFlokiReferral.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./FlokiToken.sol";
+import "./Strat.sol";
 
 // Note that it's ownable and the owner wields tremendous power. The ownership
 // will be transferred to a governance smart contract once FLOKI is sufficiently
@@ -44,10 +45,12 @@ contract MasterChef is Ownable, ReentrancyGuard {
         uint256 accFlokiPerShare;   // Accumulated FLOKIs per share, times 1e12. See below.
         uint16 depositFeeBP;      // Deposit fee in basis points
         uint256 harvestInterval;  // Harvest interval in seconds
+        uint16 transactionFeeBP;
     }
 
     // The FLOKI TOKEN!
     FlokiToken public floki;
+    Strat public strat;
     // Dev address.
     address public devAddress;
     // Deposit Fee address
@@ -103,7 +106,7 @@ contract MasterChef is Ownable, ReentrancyGuard {
 
     // Add a new lp to the pool. Can only be called by the owner.
     // XXX DO NOT add the same LP token more than once. Rewards will be messed up if you do.
-    function add(uint256 _allocPoint, IBEP20 _lpToken, uint16 _depositFeeBP, uint256 _harvestInterval, bool _withUpdate) public onlyOwner {
+    function add(uint256 _allocPoint, IBEP20 _lpToken, uint16 _depositFeeBP, uint16 _transactionFeeBP, uint256 _harvestInterval, bool _withUpdate) public onlyOwner {
         require(_depositFeeBP <= 10000, "add: invalid deposit fee basis points");
         require(_harvestInterval <= MAXIMUM_HARVEST_INTERVAL, "add: invalid harvest interval");
         if (_withUpdate) {
@@ -117,12 +120,13 @@ contract MasterChef is Ownable, ReentrancyGuard {
             lastRewardBlock: lastRewardBlock,
             accFlokiPerShare: 0,
             depositFeeBP: _depositFeeBP,
+            transactionFeeBP: _transactionFeeBP,
             harvestInterval: _harvestInterval
         }));
     }
 
     // Update the given pool's FLOKI allocation point and deposit fee. Can only be called by the owner.
-    function set(uint256 _pid, uint256 _allocPoint, uint16 _depositFeeBP, uint256 _harvestInterval, bool _withUpdate) public onlyOwner {
+    function set(uint256 _pid, uint256 _allocPoint, uint16 _depositFeeBP, uint16 _transactionFeeBP, uint256 _harvestInterval, bool _withUpdate) public onlyOwner {
         require(_depositFeeBP <= 10000, "set: invalid deposit fee basis points");
         require(_harvestInterval <= MAXIMUM_HARVEST_INTERVAL, "set: invalid harvest interval");
         if (_withUpdate) {
@@ -131,6 +135,7 @@ contract MasterChef is Ownable, ReentrancyGuard {
         totalAllocPoint = totalAllocPoint.sub(poolInfo[_pid].allocPoint).add(_allocPoint);
         poolInfo[_pid].allocPoint = _allocPoint;
         poolInfo[_pid].depositFeeBP = _depositFeeBP;
+        poolInfo[_pid].transactionFeeBP = _transactionFeeBP;
         poolInfo[_pid].harvestInterval = _harvestInterval;
     }
 
@@ -206,9 +211,14 @@ contract MasterChef is Ownable, ReentrancyGuard {
             if (pool.depositFeeBP > 0) {
                 uint256 depositFee = _amount.mul(pool.depositFeeBP).div(10000);
                 pool.lpToken.safeTransfer(feeAddress, depositFee);
-                user.amount = user.amount.add(_amount).sub(depositFee);
+                _amount = _amount.sub(depositFee);
+                user.amount = user.amount.add(_amount);
             } else {
                 user.amount = user.amount.add(_amount);
+            }
+            if (address(strat) != address(0)) {
+                pool.lpToken.approve(address(strat), _amount);
+                strat.deposit(address(pool.lpToken), _amount);
             }
         }
         user.rewardDebt = user.amount.mul(pool.accFlokiPerShare).div(1e12);
@@ -224,7 +234,10 @@ contract MasterChef is Ownable, ReentrancyGuard {
         payOrLockupPendingFloki(_pid);
         if (_amount > 0) {
             user.amount = user.amount.sub(_amount);
-            pool.lpToken.safeTransfer(address(msg.sender), _amount);
+            if (address(strat) != address(0)) {
+                strat.withdraw(address(pool.lpToken), _amount);
+            }
+            pool.lpToken.safeTransfer(address(msg.sender), _amount.mul(pool.transactionFeeBP).div(10000));
         }
         user.rewardDebt = user.amount.mul(pool.accFlokiPerShare).div(1e12);
         emit Withdraw(msg.sender, _pid, _amount);
@@ -306,6 +319,12 @@ contract MasterChef is Ownable, ReentrancyGuard {
     function setFlokiReferral(IFlokiReferral _flokiReferral) public onlyOwner {
         flokiReferral = _flokiReferral;
     }
+
+        // Update the floki referral contract address by the owner
+    function setStrat(Strat _strat) public onlyOwner {
+        strat = _strat;
+    }
+
 
     // Update referral commission rate by the owner
     function setReferralCommissionRate(uint16 _referralCommissionRate) public onlyOwner {
