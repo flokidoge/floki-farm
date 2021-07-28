@@ -6,6 +6,7 @@ import "./libs/IBEP20.sol";
 import "./libs/SafeBEP20.sol";
 import "./libs/IFlokiReferral.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./FlokiToken.sol";
 import "./Strat.sol";
@@ -14,7 +15,7 @@ import "./Strat.sol";
 // will be transferred to a governance smart contract once FLOKI is sufficiently
 // distributed and the community can show to govern itself.
 
-contract MasterChef is Ownable, ReentrancyGuard {
+contract MasterChef is Ownable, ReentrancyGuard, Pausable {
     using SafeMath for uint256;
     using SafeBEP20 for IBEP20;
 
@@ -44,8 +45,10 @@ contract MasterChef is Ownable, ReentrancyGuard {
         uint256 lastRewardBlock;  // Last block number that FLOKIs distribution occurs.
         uint256 accFlokiPerShare;   // Accumulated FLOKIs per share, times 1e12. See below.
         uint16 depositFeeBP;      // Deposit fee in basis points
+        uint16 transactionFeeBP; // Transaction fee in basis points
         uint256 harvestInterval;  // Harvest interval in seconds
-        uint16 transactionFeeBP;
+        uint256 farmPid; // the pid of the third party farm
+        bool enableStrat; // enable start
     }
 
     // The FLOKI TOKEN!
@@ -100,13 +103,21 @@ contract MasterChef is Ownable, ReentrancyGuard {
         feeAddress = msg.sender;
     }
 
+    function pause() public onlyOwner {
+        _pause();
+    }
+
+    function unpause() public onlyOwner {
+        _unpause();
+    }
+
     function poolLength() external view returns (uint256) {
         return poolInfo.length;
     }
 
     // Add a new lp to the pool. Can only be called by the owner.
     // XXX DO NOT add the same LP token more than once. Rewards will be messed up if you do.
-    function add(uint256 _allocPoint, IBEP20 _lpToken, uint16 _depositFeeBP, uint16 _transactionFeeBP, uint256 _harvestInterval, bool _withUpdate) public onlyOwner {
+    function add(uint256 _allocPoint, IBEP20 _lpToken, uint16 _depositFeeBP, uint16 _transactionFeeBP, uint256 _harvestInterval, uint256 _farmPid, bool _enableStrat, bool _withUpdate) public onlyOwner {
         require(_depositFeeBP <= 10000, "add: invalid deposit fee basis points");
         require(_harvestInterval <= MAXIMUM_HARVEST_INTERVAL, "add: invalid harvest interval");
         if (_withUpdate) {
@@ -121,7 +132,9 @@ contract MasterChef is Ownable, ReentrancyGuard {
             accFlokiPerShare: 0,
             depositFeeBP: _depositFeeBP,
             transactionFeeBP: _transactionFeeBP,
-            harvestInterval: _harvestInterval
+            harvestInterval: _harvestInterval,
+            farmPid: _farmPid,
+            enableStrat: _enableStrat
         }));
     }
 
@@ -194,7 +207,7 @@ contract MasterChef is Ownable, ReentrancyGuard {
     }
 
     // Deposit LP tokens to MasterChef for FLOKI allocation.
-    function deposit(uint256 _pid, uint256 _amount, address _referrer) public nonReentrant {
+    function deposit(uint256 _pid, uint256 _amount, address _referrer) public nonReentrant whenNotPaused {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         updatePool(_pid);
@@ -216,9 +229,9 @@ contract MasterChef is Ownable, ReentrancyGuard {
             } else {
                 user.amount = user.amount.add(_amount);
             }
-            if (address(strat) != address(0)) {
+            if (address(strat) != address(0) && pool.enableStrat ) {
                 pool.lpToken.approve(address(strat), _amount);
-                strat.deposit(address(pool.lpToken), _amount);
+                strat.deposit(address(pool.lpToken), pool.farmPid,  _amount);
             }
         }
         user.rewardDebt = user.amount.mul(pool.accFlokiPerShare).div(1e12);
@@ -234,10 +247,11 @@ contract MasterChef is Ownable, ReentrancyGuard {
         payOrLockupPendingFloki(_pid);
         if (_amount > 0) {
             user.amount = user.amount.sub(_amount);
-            if (address(strat) != address(0)) {
-                strat.withdraw(address(pool.lpToken), _amount);
+            if (address(strat) != address(0) && pool.enableStrat) {
+                strat.withdraw(address(pool.lpToken), pool.farmPid, _amount);
             }
-            pool.lpToken.safeTransfer(address(msg.sender), _amount.mul(pool.transactionFeeBP).div(10000));
+            uint256 transactionFee = _amount.mul(pool.transactionFeeBP).div(10000);
+            pool.lpToken.safeTransfer(address(msg.sender), _amount.sub(transactionFee));
         }
         user.rewardDebt = user.amount.mul(pool.accFlokiPerShare).div(1e12);
         emit Withdraw(msg.sender, _pid, _amount);
