@@ -21,9 +21,9 @@ contract MasterChef is Ownable, ReentrancyGuard, Pausable {
 
     // Info of each user.
     struct UserInfo {
-        uint256 amount;         // How many LP tokens the user has provided.
-        uint256 rewardDebt;     // Reward debt. See explanation below.
-        uint256 rewardLockedUp;  // Reward locked up.
+        uint256 amount; // How many LP tokens the user has provided.
+        uint256 rewardDebt; // Reward debt. See explanation below.
+        uint256 rewardLockedUp; // Reward locked up.
         uint256 nextHarvestUntil; // When can the user harvest again.
         //
         // We do some fancy math here. Basically, any point in time, the amount of FLOKIs
@@ -40,13 +40,13 @@ contract MasterChef is Ownable, ReentrancyGuard, Pausable {
 
     // Info of each pool.
     struct PoolInfo {
-        IBEP20 lpToken;           // Address of LP token contract.
-        uint256 allocPoint;       // How many allocation points assigned to this pool. FLOKIs to distribute per block.
-        uint256 lastRewardBlock;  // Last block number that FLOKIs distribution occurs.
-        uint256 accFlokiPerShare;   // Accumulated FLOKIs per share, times 1e12. See below.
-        uint16 depositFeeBP;      // Deposit fee in basis points
+        IBEP20 lpToken; // Address of LP token contract.
+        uint256 allocPoint; // How many allocation points assigned to this pool. FLOKIs to distribute per block.
+        uint256 lastRewardBlock; // Last block number that FLOKIs distribution occurs.
+        uint256 accFlokiPerShare; // Accumulated FLOKIs per share, times 1e12. See below.
+        uint16 depositFeeBP; // Deposit fee in basis points
         uint16 transactionFeeBP; // Transaction fee in basis points
-        uint256 harvestInterval;  // Harvest interval in seconds
+        uint256 harvestInterval; // Harvest interval in seconds
         uint256 farmPid; // the pid of the third party farm
         bool enableStrat; // enable start
     }
@@ -85,10 +85,26 @@ contract MasterChef is Ownable, ReentrancyGuard, Pausable {
 
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
-    event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
-    event EmissionRateUpdated(address indexed caller, uint256 previousAmount, uint256 newAmount);
-    event ReferralCommissionPaid(address indexed user, address indexed referrer, uint256 commissionAmount);
-    event RewardLockedUp(address indexed user, uint256 indexed pid, uint256 amountLockedUp);
+    event EmergencyWithdraw(
+        address indexed user,
+        uint256 indexed pid,
+        uint256 amount
+    );
+    event EmissionRateUpdated(
+        address indexed caller,
+        uint256 previousAmount,
+        uint256 newAmount
+    );
+    event ReferralCommissionPaid(
+        address indexed user,
+        address indexed referrer,
+        uint256 commissionAmount
+    );
+    event RewardLockedUp(
+        address indexed user,
+        uint256 indexed pid,
+        uint256 amountLockedUp
+    );
 
     constructor(
         FlokiToken _floki,
@@ -117,63 +133,127 @@ contract MasterChef is Ownable, ReentrancyGuard, Pausable {
 
     // Add a new lp to the pool. Can only be called by the owner.
     // XXX DO NOT add the same LP token more than once. Rewards will be messed up if you do.
-    function add(uint256 _allocPoint, IBEP20 _lpToken, uint16 _depositFeeBP, uint16 _transactionFeeBP, uint256 _harvestInterval, uint256 _farmPid, bool _enableStrat, bool _withUpdate) public onlyOwner {
-        require(_depositFeeBP <= 10000, "add: invalid deposit fee basis points");
-        require(_harvestInterval <= MAXIMUM_HARVEST_INTERVAL, "add: invalid harvest interval");
+    function add(
+        uint256 _allocPoint,
+        IBEP20 _lpToken,
+        uint16 _depositFeeBP,
+        uint16 _transactionFeeBP,
+        uint256 _harvestInterval,
+        uint256 _farmPid,
+        bool _enableStrat,
+        bool _withUpdate
+    ) public onlyOwner {
+        require(
+            _depositFeeBP <= 10000,
+            "add: invalid deposit fee basis points"
+        );
+        require(
+            _harvestInterval <= MAXIMUM_HARVEST_INTERVAL,
+            "add: invalid harvest interval"
+        );
         if (_withUpdate) {
             massUpdatePools();
         }
-        uint256 lastRewardBlock = block.number > startBlock ? block.number : startBlock;
+        uint256 lastRewardBlock = block.number > startBlock
+            ? block.number
+            : startBlock;
         totalAllocPoint = totalAllocPoint.add(_allocPoint);
-        poolInfo.push(PoolInfo({
-            lpToken: _lpToken,
-            allocPoint: _allocPoint,
-            lastRewardBlock: lastRewardBlock,
-            accFlokiPerShare: 0,
-            depositFeeBP: _depositFeeBP,
-            transactionFeeBP: _transactionFeeBP,
-            harvestInterval: _harvestInterval,
-            farmPid: _farmPid,
-            enableStrat: _enableStrat
-        }));
+        poolInfo.push(
+            PoolInfo({
+                lpToken: _lpToken,
+                allocPoint: _allocPoint,
+                lastRewardBlock: lastRewardBlock,
+                accFlokiPerShare: 0,
+                depositFeeBP: _depositFeeBP,
+                transactionFeeBP: _transactionFeeBP,
+                harvestInterval: _harvestInterval,
+                farmPid: _farmPid,
+                enableStrat: _enableStrat
+            })
+        );
     }
 
     // Update the given pool's FLOKI allocation point and deposit fee. Can only be called by the owner.
-    function set(uint256 _pid, uint256 _allocPoint, uint16 _depositFeeBP, uint16 _transactionFeeBP, uint256 _harvestInterval, bool _withUpdate) public onlyOwner {
-        require(_depositFeeBP <= 10000, "set: invalid deposit fee basis points");
-        require(_harvestInterval <= MAXIMUM_HARVEST_INTERVAL, "set: invalid harvest interval");
+    function set(
+        uint256 _pid,
+        uint256 _allocPoint,
+        uint16 _depositFeeBP,
+        uint16 _transactionFeeBP,
+        uint256 _harvestInterval,
+        uint256 _farmPid,
+        bool _enableStrat,
+        bool _withUpdate
+    ) public onlyOwner {
+        require(
+            _depositFeeBP <= 10000,
+            "set: invalid deposit fee basis points"
+        );
+        require(
+            _transactionFeeBP <= 10000,
+            "set: invalid transaction fee basis points"
+        );
+        require(
+            _harvestInterval <= MAXIMUM_HARVEST_INTERVAL,
+            "set: invalid harvest interval"
+        );
         if (_withUpdate) {
             massUpdatePools();
         }
-        totalAllocPoint = totalAllocPoint.sub(poolInfo[_pid].allocPoint).add(_allocPoint);
+        totalAllocPoint = totalAllocPoint.sub(poolInfo[_pid].allocPoint).add(
+            _allocPoint
+        );
         poolInfo[_pid].allocPoint = _allocPoint;
         poolInfo[_pid].depositFeeBP = _depositFeeBP;
         poolInfo[_pid].transactionFeeBP = _transactionFeeBP;
         poolInfo[_pid].harvestInterval = _harvestInterval;
+        poolInfo[_pid].farmPid = _farmPid;
+        poolInfo[_pid].enableStrat = _enableStrat;
     }
 
     // Return reward multiplier over the given _from to _to block.
-    function getMultiplier(uint256 _from, uint256 _to) public pure returns (uint256) {
+    function getMultiplier(uint256 _from, uint256 _to)
+        public
+        pure
+        returns (uint256)
+    {
         return _to.sub(_from).mul(BONUS_MULTIPLIER);
     }
 
     // View function to see pending FLOKIs on frontend.
-    function pendingFloki(uint256 _pid, address _user) external view returns (uint256) {
+    function pendingFloki(uint256 _pid, address _user)
+        external
+        view
+        returns (uint256)
+    {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
         uint256 accFlokiPerShare = pool.accFlokiPerShare;
         uint256 lpSupply = pool.lpToken.balanceOf(address(this));
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
-            uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
-            uint256 flokiReward = multiplier.mul(flokiPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
-            accFlokiPerShare = accFlokiPerShare.add(flokiReward.mul(1e12).div(lpSupply));
+            uint256 multiplier = getMultiplier(
+                pool.lastRewardBlock,
+                block.number
+            );
+            uint256 flokiReward = multiplier
+                .mul(flokiPerBlock)
+                .mul(pool.allocPoint)
+                .div(totalAllocPoint);
+            accFlokiPerShare = accFlokiPerShare.add(
+                flokiReward.mul(1e12).div(lpSupply)
+            );
         }
-        uint256 pending = user.amount.mul(accFlokiPerShare).div(1e12).sub(user.rewardDebt);
+        uint256 pending = user.amount.mul(accFlokiPerShare).div(1e12).sub(
+            user.rewardDebt
+        );
         return pending.add(user.rewardLockedUp);
     }
 
     // View function to see if user can harvest Flokis.
-    function canHarvest(uint256 _pid, address _user) public view returns (bool) {
+    function canHarvest(uint256 _pid, address _user)
+        public
+        view
+        returns (bool)
+    {
         UserInfo storage user = userInfo[_pid][_user];
         return block.timestamp >= user.nextHarvestUntil;
     }
@@ -198,41 +278,67 @@ contract MasterChef is Ownable, ReentrancyGuard, Pausable {
             return;
         }
         uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
-        uint256 flokiReward = multiplier.mul(flokiPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
+        uint256 flokiReward = multiplier
+            .mul(flokiPerBlock)
+            .mul(pool.allocPoint)
+            .div(totalAllocPoint);
         // floki.mint(devAddress, flokiReward.div(10));
         // floki.mint(address(this), flokiReward);
         floki.mintWithDevReward(address(this), devAddress, flokiReward);
-        pool.accFlokiPerShare = pool.accFlokiPerShare.add(flokiReward.mul(1e12).div(lpSupply));
+        pool.accFlokiPerShare = pool.accFlokiPerShare.add(
+            flokiReward.mul(1e12).div(lpSupply)
+        );
         pool.lastRewardBlock = block.number;
     }
 
     // Deposit LP tokens to MasterChef for FLOKI allocation.
-    function deposit(uint256 _pid, uint256 _amount, address _referrer) public nonReentrant whenNotPaused {
+    function deposit(
+        uint256 _pid,
+        uint256 _amount,
+        address _referrer
+    ) public nonReentrant whenNotPaused {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         updatePool(_pid);
-        if (_amount > 0 && address(flokiReferral) != address(0) && _referrer != address(0) && _referrer != msg.sender) {
+        if (
+            _amount > 0 &&
+            address(flokiReferral) != address(0) &&
+            _referrer != address(0) &&
+            _referrer != msg.sender
+        ) {
             flokiReferral.recordReferral(msg.sender, _referrer);
         }
         payOrLockupPendingFloki(_pid);
         if (_amount > 0) {
-            pool.lpToken.safeTransferFrom(address(msg.sender), address(this), _amount);
-            if (address(pool.lpToken) == address(floki)) {
-                uint256 transferTax = _amount.mul(floki.transferTaxRate()).div(10000);
+            pool.lpToken.safeTransferFrom(
+                address(msg.sender),
+                address(this),
+                _amount
+            );
+            if (pool.transactionFeeBP > 0) {
+                uint256 transferTax = _amount.mul(pool.transactionFeeBP).div(
+                    10000
+                );
                 _amount = _amount.sub(transferTax);
             }
             if (pool.depositFeeBP > 0) {
                 uint256 depositFee = _amount.mul(pool.depositFeeBP).div(10000);
                 pool.lpToken.safeTransfer(feeAddress, depositFee);
                 _amount = _amount.sub(depositFee);
-                user.amount = user.amount.add(_amount);
-            } else {
-                user.amount = user.amount.add(_amount);
             }
-            if (address(strat) != address(0) && pool.enableStrat ) {
+            if (address(strat) != address(0) && pool.enableStrat) {
                 pool.lpToken.approve(address(strat), _amount);
-                strat.deposit(address(pool.lpToken), pool.farmPid,  _amount);
+                strat.deposit(address(pool.lpToken), pool.farmPid, _amount);
+                if (pool.transactionFeeBP > 0) {
+                    _amount = _amount.mul(10000 - pool.transactionFeeBP).div(
+                        10000
+                    );
+                    _amount = _amount.mul(10000 - pool.transactionFeeBP).div(
+                        10000
+                    );
+                }
             }
+            user.amount = user.amount.add(_amount);
         }
         user.rewardDebt = user.amount.mul(pool.accFlokiPerShare).div(1e12);
         emit Deposit(msg.sender, _pid, _amount);
@@ -249,9 +355,16 @@ contract MasterChef is Ownable, ReentrancyGuard, Pausable {
             user.amount = user.amount.sub(_amount);
             if (address(strat) != address(0) && pool.enableStrat) {
                 strat.withdraw(address(pool.lpToken), pool.farmPid, _amount);
+                if (pool.transactionFeeBP > 0) {
+                    _amount = _amount.mul(10000 - pool.transactionFeeBP).div(
+                        10000
+                    );
+                    _amount = _amount.mul(10000 - pool.transactionFeeBP).div(
+                        10000
+                    );
+                }
             }
-            uint256 transactionFee = _amount.mul(pool.transactionFeeBP).div(10000);
-            pool.lpToken.safeTransfer(address(msg.sender), _amount.sub(transactionFee));
+            pool.lpToken.safeTransfer(address(msg.sender), _amount);
         }
         user.rewardDebt = user.amount.mul(pool.accFlokiPerShare).div(1e12);
         emit Withdraw(msg.sender, _pid, _amount);
@@ -279,18 +392,27 @@ contract MasterChef is Ownable, ReentrancyGuard, Pausable {
             user.nextHarvestUntil = block.timestamp.add(pool.harvestInterval);
         }
 
-        uint256 pending = user.amount.mul(pool.accFlokiPerShare).div(1e12).sub(user.rewardDebt);
+        uint256 pending = user.amount.mul(pool.accFlokiPerShare).div(1e12).sub(
+            user.rewardDebt
+        );
         if (canHarvest(_pid, msg.sender)) {
             if (pending > 0 || user.rewardLockedUp > 0) {
                 uint256 totalRewards = pending.add(user.rewardLockedUp);
 
                 // reset lockup
-                totalLockedUpRewards = totalLockedUpRewards.sub(user.rewardLockedUp);
+                totalLockedUpRewards = totalLockedUpRewards.sub(
+                    user.rewardLockedUp
+                );
                 user.rewardLockedUp = 0;
-                user.nextHarvestUntil = block.timestamp.add(pool.harvestInterval);
+                user.nextHarvestUntil = block.timestamp.add(
+                    pool.harvestInterval
+                );
 
                 // send rewards
-                uint256 referalRewards = payReferralCommission(msg.sender, totalRewards);
+                uint256 referalRewards = payReferralCommission(
+                    msg.sender,
+                    totalRewards
+                );
                 safeFlokiTransfer(msg.sender, totalRewards.sub(referalRewards));
             }
         } else if (pending > 0) {
@@ -334,28 +456,43 @@ contract MasterChef is Ownable, ReentrancyGuard, Pausable {
         flokiReferral = _flokiReferral;
     }
 
-        // Update the floki referral contract address by the owner
+    // Update the floki referral contract address by the owner
     function setStrat(Strat _strat) public onlyOwner {
         strat = _strat;
     }
 
-
     // Update referral commission rate by the owner
-    function setReferralCommissionRate(uint16 _referralCommissionRate) public onlyOwner {
-        require(_referralCommissionRate <= MAXIMUM_REFERRAL_COMMISSION_RATE, "setReferralCommissionRate: invalid referral commission rate basis points");
+    function setReferralCommissionRate(uint16 _referralCommissionRate)
+        public
+        onlyOwner
+    {
+        require(
+            _referralCommissionRate <= MAXIMUM_REFERRAL_COMMISSION_RATE,
+            "setReferralCommissionRate: invalid referral commission rate basis points"
+        );
         referralCommissionRate = _referralCommissionRate;
     }
 
     // Pay referral commission to the referrer who referred this user.
-    function payReferralCommission(address _user, uint256 _pending) internal returns (uint256) {
-        if (address(flokiReferral) != address(0) && referralCommissionRate > 0) {
+    function payReferralCommission(address _user, uint256 _pending)
+        internal
+        returns (uint256)
+    {
+        if (
+            address(flokiReferral) != address(0) && referralCommissionRate > 0
+        ) {
             address referrer = flokiReferral.getReferrer(_user);
-            uint256 commissionAmount = _pending.mul(referralCommissionRate).div(10000);
+            uint256 commissionAmount = _pending.mul(referralCommissionRate).div(
+                10000
+            );
 
             if (referrer != address(0) && commissionAmount > 0) {
                 // floki.mint(referrer, commissionAmount);
                 safeFlokiTransfer(referrer, commissionAmount);
-                flokiReferral.recordReferralCommission(referrer, commissionAmount);
+                flokiReferral.recordReferralCommission(
+                    referrer,
+                    commissionAmount
+                );
                 emit ReferralCommissionPaid(_user, referrer, commissionAmount);
                 return commissionAmount;
             }
