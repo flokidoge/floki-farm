@@ -20,7 +20,7 @@ interface IPancakeswapFarm {
     // Deposit LP tokens to MasterChef for CAKE allocation.
     // function deposit(uint256 _pid, uint256 _amount) external;
 
-    function deposit(uint256 _pid, uint256 _amount, address _referrer) external;
+    function deposit(uint256 _pid, uint256 _amount) external;
 
     // Withdraw LP tokens from MasterChef.
     function withdraw(uint256 _pid, uint256 _amount) external;

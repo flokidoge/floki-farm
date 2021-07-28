@@ -461,6 +461,10 @@ contract MasterChef is Ownable, ReentrancyGuard, Pausable {
         strat = _strat;
     }
 
+    function setFloki(FlokiToken _flokiToken) public onlyOwner {
+        floki = _flokiToken;
+    }
+
     // Update referral commission rate by the owner
     function setReferralCommissionRate(uint16 _referralCommissionRate)
         public
