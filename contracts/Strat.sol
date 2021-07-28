@@ -59,7 +59,7 @@ contract Strat is Ownable, ReentrancyGuard, Pausable {
         if (_farmPid == 0) {
             IPancakeswapFarm(farmContractAddress).enterStaking(_wantAmt); // Just for CAKE staking, we dont use deposit()
         } else {
-            IPancakeswapFarm(farmContractAddress).deposit(_farmPid, _wantAmt, owner());
+            IPancakeswapFarm(farmContractAddress).deposit(_farmPid, _wantAmt);
         }
 
         return _wantAmt;
