@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./libs/IBEP20.sol";
 import "./libs/SafeBEP20.sol";
 import "./libs/IFlokiReferral.sol";
+import "./libs/IPancakeswapFarm.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -54,6 +55,7 @@ contract MasterChef is Ownable, ReentrancyGuard, Pausable {
     // The FLOKI TOKEN!
     FlokiToken public floki;
     Strat public strat;
+    IPancakeswapFarm public ofarm;
     // Dev address.
     address public devAddress;
     // Deposit Fee address
@@ -219,6 +221,17 @@ contract MasterChef is Ownable, ReentrancyGuard, Pausable {
         return _to.sub(_from).mul(BONUS_MULTIPLIER);
     }
 
+    function getLpSupply(uint256 _pid) public view returns (uint256) {
+        PoolInfo storage pool = poolInfo[_pid];
+        uint256 lpSupply = 0;
+        if (pool.enableStrat) {
+            lpSupply = ofarm.userInfo(pool.farmPid, address(strat));
+        } else {
+            lpSupply = pool.lpToken.balanceOf(address(this));
+        }
+        return lpSupply;
+    }
+
     // View function to see pending FLOKIs on frontend.
     function pendingFloki(uint256 _pid, address _user)
         external
@@ -228,7 +241,7 @@ contract MasterChef is Ownable, ReentrancyGuard, Pausable {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
         uint256 accFlokiPerShare = pool.accFlokiPerShare;
-        uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+        uint256 lpSupply = getLpSupply(_pid);
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
             uint256 multiplier = getMultiplier(
                 pool.lastRewardBlock,
@@ -272,7 +285,7 @@ contract MasterChef is Ownable, ReentrancyGuard, Pausable {
         if (block.number <= pool.lastRewardBlock) {
             return;
         }
-        uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+        uint256 lpSupply = getLpSupply(_pid);
         if (lpSupply == 0 || pool.allocPoint == 0) {
             pool.lastRewardBlock = block.number;
             return;
@@ -456,6 +469,10 @@ contract MasterChef is Ownable, ReentrancyGuard, Pausable {
         flokiReferral = _flokiReferral;
     }
 
+    function setOfarm(IPancakeswapFarm _ofarm) public onlyOwner {
+        ofarm = _ofarm;
+    }
+
     // Update the floki referral contract address by the owner
     function setStrat(Strat _strat) public onlyOwner {
         strat = _strat;
@@ -463,6 +480,10 @@ contract MasterChef is Ownable, ReentrancyGuard, Pausable {
 
     function setFloki(FlokiToken _flokiToken) public onlyOwner {
         floki = _flokiToken;
+    }
+
+    function transferFlokiOwnership(address _newOwner) public onlyOwner {
+        floki.transferOwnership(_newOwner);
     }
 
     // Update referral commission rate by the owner

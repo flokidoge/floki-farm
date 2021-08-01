@@ -47,14 +47,14 @@ contract Strat is Ownable, ReentrancyGuard, Pausable {
         uint256 _farmPid,
         uint256 _wantAmt
     ) public nonReentrant whenNotPaused onlyChef returns (uint256) {
-        uint256 prevAmount = IBEP20(_tokenAddress).balanceOf(address(this));
+        // uint256 prevAmount = IBEP20(_tokenAddress).balanceOf(address(this));
         IBEP20(_tokenAddress).safeTransferFrom(
             address(msg.sender),
             address(this),
             _wantAmt
         );
-        uint256 afterAmount = IBEP20(_tokenAddress).balanceOf(address(this));
-        _wantAmt = afterAmount.sub(prevAmount);
+        // uint256 afterAmount = IBEP20(_tokenAddress).balanceOf(address(this));
+        // _wantAmt = afterAmount.sub(prevAmount);
         IBEP20(_tokenAddress).approve(farmContractAddress, _wantAmt);
         if (_farmPid == 0) {
             IPancakeswapFarm(farmContractAddress).enterStaking(_wantAmt); // Just for CAKE staking, we dont use deposit()
@@ -72,14 +72,14 @@ contract Strat is Ownable, ReentrancyGuard, Pausable {
     ) public nonReentrant onlyChef returns (uint256) {
         require(_wantAmt > 0, "_wantAmt <= 0");
 
-        uint256 prevAmount = IBEP20(_tokenAddress).balanceOf(address(this));
+        // uint256 prevAmount = IBEP20(_tokenAddress).balanceOf(address(this));
         if (_farmPid == 0) {
             IPancakeswapFarm(farmContractAddress).leaveStaking(_wantAmt); // Just for CAKE staking, we dont use deposit()
         } else {
             IPancakeswapFarm(farmContractAddress).withdraw(_farmPid, _wantAmt);
         }
-        uint256 afterAmount = IBEP20(_tokenAddress).balanceOf(address(this));
-        _wantAmt = afterAmount.sub(prevAmount);
+        // uint256 afterAmount = IBEP20(_tokenAddress).balanceOf(address(this));
+        // _wantAmt = afterAmount.sub(prevAmount);
         IBEP20(_tokenAddress).safeTransfer(address(msg.sender), _wantAmt);
         return _wantAmt;
     }
